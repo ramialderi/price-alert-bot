@@ -1,0 +1,53 @@
+name: Price Alert
+
+on:
+  workflow_dispatch:
+    inputs:
+      coin:
+        description: "CoinGecko coin id (e.g. bitcoin, ethereum, tether)"
+        required: false
+        default: "bitcoin"
+      target:
+        description: "Target price"
+        required: false
+        default: "100000"
+      direction:
+        description: "above | below"
+        required: false
+        default: "above"
+      currency:
+        description: "Quote currency"
+        required: false
+        default: "usd"
+  schedule:
+    # Every 15 minutes. GitHub's scheduler can lag under load, and
+    # very frequent schedules may be throttled on free accounts —
+    # widen the interval if runs start getting skipped.
+    - cron: "*/15 * * * *"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run price check
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python price_alert.py \
+            --coin "${{ github.event.inputs.coin || 'bitcoin' }}" \
+            --target "${{ github.event.inputs.target || '100000' }}" \
+            --direction "${{ github.event.inputs.direction || 'above' }}" \
+            --currency "${{ github.event.inputs.currency || 'usd' }}"
